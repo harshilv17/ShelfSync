@@ -1,15 +1,12 @@
+import 'dotenv/config';
 import app from './api/app';
-import { PrismaClient } from '@prisma/client';
-import dotenv from 'dotenv';
-dotenv.config();
+import { connectDb } from './infrastructure/database';
 
 const port = process.env.PORT || 3000;
-const prisma = new PrismaClient();
 
 const startServer = async () => {
   try {
-    await prisma.$connect();
-    console.log('Connected to PostgreSQL');
+    await connectDb();
 
     app.listen(port, () => {
       console.log(`LibraNet API running on http://localhost:${port}`);
