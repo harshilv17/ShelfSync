@@ -9,6 +9,7 @@ import { RedisLockManager } from '../infrastructure/RedisLockManager';
 import { InProcessEventBus } from '../infrastructure/InProcessEventBus';
 import { DomainError } from '../domain/errors/DomainErrors';
 import { z } from 'zod';
+import { prisma } from '../infrastructure/database';
 
 const router = Router();
 
@@ -40,7 +41,7 @@ router.post('/loans', authenticate, async (req: Request, res: Response) => {
   try {
     const { bookId, branchId } = BorrowBookSchema.parse(req.body);
     const loan = await borrowService.execute(req.user!.userId, bookId, branchId);
-    
+
     res.status(201).json({
       success: true,
       data: {
@@ -59,7 +60,7 @@ router.put('/loans/:id/return', authenticate, async (req: Request, res: Response
   try {
     const { condition } = ReturnBookSchema.parse({ loanId: req.params.id, ...req.body });
     await returnService.execute(req.params.id as string, condition);
-    
+
     res.status(200).json({ success: true, data: { message: "Book returned successfully" } });
   } catch (error) {
     handleDomainError(res, error);
@@ -71,7 +72,7 @@ router.post('/reservations', authenticate, async (req: Request, res: Response) =
   try {
     const { bookId } = ReservationSchema.parse(req.body);
     const reservation = await reservationService.createReservation(req.user!.userId, bookId);
-    
+
     res.status(201).json({
       success: true,
       data: {
