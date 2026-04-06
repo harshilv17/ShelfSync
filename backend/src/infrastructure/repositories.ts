@@ -1,4 +1,5 @@
-import { prisma } from './database';
+import { Collection, Document } from 'mongodb';
+import { getDb } from './database';
 import { Book } from '../domain/entities/Book';
 import { BookCopy } from '../domain/entities/BookCopy';
 import { Loan } from '../domain/entities/Loan';
@@ -14,11 +15,24 @@ import {
   IBranchRepository
 } from '../domain/interfaces/repositories';
 
+/* ─── helpers ─────────────────────────────────────────────────────── */
+
+function col(name: string): Collection {
+  return getDb().collection(name);
+}
+
+/** Domain entities use string UUIDs as _id, so we read them back as strings. */
+function id(doc: Document): string {
+  return doc._id as unknown as string;
+}
+
+/* ─── Book ────────────────────────────────────────────────────────── */
+
 export class BookRepository implements IBookRepository {
-  async findById(id: string): Promise<Book | null> {
-    const raw = await prisma.book.findUnique({ where: { id } });
+  async findById(bookId: string): Promise<Book | null> {
+    const raw = await col('books').findOne({ _id: bookId as any });
     if (!raw) return null;
-    return new Book(raw.id, raw.createdAt, raw.updatedAt, {
+    return new Book(id(raw), raw.createdAt, raw.updatedAt, {
       title: raw.title,
       author: raw.author,
       isbn: raw.isbn,
@@ -27,9 +41,9 @@ export class BookRepository implements IBookRepository {
   }
 
   async findByIsbn(isbn: string): Promise<Book | null> {
-    const raw = await prisma.book.findUnique({ where: { isbn } });
+    const raw = await col('books').findOne({ isbn });
     if (!raw) return null;
-    return new Book(raw.id, raw.createdAt, raw.updatedAt, {
+    return new Book(id(raw), raw.createdAt, raw.updatedAt, {
       title: raw.title,
       author: raw.author,
       isbn: raw.isbn,
@@ -38,33 +52,30 @@ export class BookRepository implements IBookRepository {
   }
 
   async save(book: Book): Promise<void> {
-    await prisma.book.upsert({
-      where: { id: book.id },
-      create: {
-        id: book.id,
-        createdAt: book.createdAt,
-        updatedAt: book.updatedAt,
-        title: book.title,
-        author: book.author,
-        isbn: book.isbn,
-        publishedYear: book.publishedYear
+    await col('books').updateOne(
+      { _id: book.id as any },
+      {
+        $set: {
+          title: book.title,
+          author: book.author,
+          isbn: book.isbn,
+          publishedYear: book.publishedYear,
+          updatedAt: book.updatedAt
+        },
+        $setOnInsert: { createdAt: book.createdAt }
       },
-      update: {
-        title: book.title,
-        author: book.author,
-        isbn: book.isbn,
-        publishedYear: book.publishedYear,
-        updatedAt: book.updatedAt
-      }
-    });
+      { upsert: true }
+    );
   }
 }
 
+/* ─── BookCopy ────────────────────────────────────────────────────── */
+
 export class BookCopyRepository implements IBookCopyRepository {
-  async findById(id: string): Promise<BookCopy | null> {
-    const raw = await prisma.bookCopy.findUnique({ where: { id } });
+  async findById(copyId: string): Promise<BookCopy | null> {
+    const raw = await col('bookCopies').findOne({ _id: copyId as any });
     if (!raw) return null;
-    return new BookCopy(raw.id, raw.createdAt, raw.updatedAt, {
+    return new BookCopy(id(raw), raw.createdAt, raw.updatedAt, {
       bookId: raw.bookId,
       branchId: raw.branchId,
       condition: raw.condition,
@@ -73,8 +84,8 @@ export class BookCopyRepository implements IBookCopyRepository {
   }
 
   async findByBookId(bookId: string): Promise<BookCopy[]> {
-    const raw = await prisma.bookCopy.findMany({ where: { bookId } });
-    return raw.map(r => new BookCopy(r.id, r.createdAt, r.updatedAt, {
+    const docs = await col('bookCopies').find({ bookId }).toArray();
+    return docs.map(r => new BookCopy(id(r), r.createdAt, r.updatedAt, {
       bookId: r.bookId,
       branchId: r.branchId,
       condition: r.condition,
@@ -83,35 +94,31 @@ export class BookCopyRepository implements IBookCopyRepository {
   }
 
   async save(copy: BookCopy): Promise<void> {
-    await prisma.bookCopy.upsert({
-      where: { id: copy.id },
-      create: {
-        id: copy.id,
-        createdAt: copy.createdAt,
-        updatedAt: copy.updatedAt,
-        bookId: copy.bookId,
-        branchId: copy.branchId,
-        condition: copy.condition,
-        isAvailable: copy.isAvailable,
-        version: 1
+    await col('bookCopies').updateOne(
+      { _id: copy.id as any },
+      {
+        $set: {
+          bookId: copy.bookId,
+          branchId: copy.branchId,
+          condition: copy.condition,
+          isAvailable: copy.isAvailable,
+          updatedAt: copy.updatedAt
+        },
+        $setOnInsert: { createdAt: copy.createdAt, version: 0 },
+        $inc: { version: 1 }
       },
-      update: {
-        bookId: copy.bookId,
-        branchId: copy.branchId,
-        condition: copy.condition,
-        isAvailable: copy.isAvailable,
-        updatedAt: copy.updatedAt,
-        version: { increment: 1 } // optimistic locking handled automatically by Prisma increment
-      }
-    });
+      { upsert: true }
+    );
   }
 }
 
+/* ─── Loan ────────────────────────────────────────────────────────── */
+
 export class LoanRepository implements ILoanRepository {
-  async findById(id: string): Promise<Loan | null> {
-    const raw = await prisma.loan.findUnique({ where: { id } });
+  async findById(loanId: string): Promise<Loan | null> {
+    const raw = await col('loans').findOne({ _id: loanId as any });
     if (!raw) return null;
-    return new Loan(raw.id, raw.createdAt, raw.updatedAt, {
+    return new Loan(id(raw), raw.createdAt, raw.updatedAt, {
       userId: raw.userId,
       bookCopyId: raw.bookCopyId,
       dueDate: raw.dueDate,
@@ -122,10 +129,8 @@ export class LoanRepository implements ILoanRepository {
   }
 
   async findActiveLoansByUser(userId: string): Promise<Loan[]> {
-    const raw = await prisma.loan.findMany({
-      where: { userId, status: 'ACTIVE' }
-    });
-    return raw.map(r => new Loan(r.id, r.createdAt, r.updatedAt, {
+    const docs = await col('loans').find({ userId, status: 'ACTIVE' }).toArray();
+    return docs.map(r => new Loan(id(r), r.createdAt, r.updatedAt, {
       userId: r.userId,
       bookCopyId: r.bookCopyId,
       dueDate: r.dueDate,
@@ -136,39 +141,33 @@ export class LoanRepository implements ILoanRepository {
   }
 
   async save(loan: Loan): Promise<void> {
-    await prisma.loan.upsert({
-      where: { id: loan.id },
-      create: {
-        id: loan.id,
-        createdAt: loan.createdAt,
-        updatedAt: loan.updatedAt,
-        userId: loan.userId,
-        bookCopyId: loan.bookCopyId,
-        dueDate: loan.dueDate,
-        returnedAt: loan.returnedAt,
-        status: loan.status,
-        accruedFineCents: loan.accruedFine.amountInCents,
-        version: 1
+    await col('loans').updateOne(
+      { _id: loan.id as any },
+      {
+        $set: {
+          userId: loan.userId,
+          bookCopyId: loan.bookCopyId,
+          dueDate: loan.dueDate,
+          returnedAt: loan.returnedAt,
+          status: loan.status,
+          accruedFineCents: loan.accruedFine.amountInCents,
+          updatedAt: loan.updatedAt
+        },
+        $setOnInsert: { createdAt: loan.createdAt, version: 0 },
+        $inc: { version: 1 }
       },
-      update: {
-        userId: loan.userId,
-        bookCopyId: loan.bookCopyId,
-        dueDate: loan.dueDate,
-        returnedAt: loan.returnedAt,
-        status: loan.status,
-        accruedFineCents: loan.accruedFine.amountInCents,
-        updatedAt: loan.updatedAt,
-        version: { increment: 1 }
-      }
-    });
+      { upsert: true }
+    );
   }
 }
 
+/* ─── Reservation ─────────────────────────────────────────────────── */
+
 export class ReservationRepository implements IReservationRepository {
-  async findById(id: string): Promise<Reservation | null> {
-    const raw = await prisma.reservation.findUnique({ where: { id } });
+  async findById(reservationId: string): Promise<Reservation | null> {
+    const raw = await col('reservations').findOne({ _id: reservationId as any });
     if (!raw) return null;
-    return new Reservation(raw.id, raw.createdAt, raw.updatedAt, {
+    return new Reservation(id(raw), raw.createdAt, raw.updatedAt, {
       userId: raw.userId,
       bookId: raw.bookId,
       status: raw.status,
@@ -177,11 +176,11 @@ export class ReservationRepository implements IReservationRepository {
   }
 
   async findByBookSequence(bookId: string): Promise<Reservation[]> {
-    const raw = await prisma.reservation.findMany({
-      where: { bookId, status: 'PENDING' },
-      orderBy: { requestedAt: 'asc' }
-    });
-    return raw.map(r => new Reservation(r.id, r.createdAt, r.updatedAt, {
+    const docs = await col('reservations')
+      .find({ bookId, status: 'PENDING' })
+      .sort({ requestedAt: 1 })
+      .toArray();
+    return docs.map(r => new Reservation(id(r), r.createdAt, r.updatedAt, {
       userId: r.userId,
       bookId: r.bookId,
       status: r.status,
@@ -190,35 +189,31 @@ export class ReservationRepository implements IReservationRepository {
   }
 
   async save(reservation: Reservation): Promise<void> {
-    await prisma.reservation.upsert({
-      where: { id: reservation.id },
-      create: {
-        id: reservation.id,
-        createdAt: reservation.createdAt,
-        updatedAt: reservation.updatedAt,
-        userId: reservation.userId,
-        bookId: reservation.bookId,
-        status: reservation.status,
-        requestedAt: reservation.requestedAt,
-        version: 1
+    await col('reservations').updateOne(
+      { _id: reservation.id as any },
+      {
+        $set: {
+          userId: reservation.userId,
+          bookId: reservation.bookId,
+          status: reservation.status,
+          requestedAt: reservation.requestedAt,
+          updatedAt: reservation.updatedAt
+        },
+        $setOnInsert: { createdAt: reservation.createdAt, version: 0 },
+        $inc: { version: 1 }
       },
-      update: {
-        userId: reservation.userId,
-        bookId: reservation.bookId,
-        status: reservation.status,
-        requestedAt: reservation.requestedAt,
-        updatedAt: reservation.updatedAt,
-        version: { increment: 1 }
-      }
-    });
+      { upsert: true }
+    );
   }
 }
 
+/* ─── User ────────────────────────────────────────────────────────── */
+
 export class UserRepository implements IUserRepository {
-  async findById(id: string): Promise<User | null> {
-    const raw = await prisma.user.findUnique({ where: { id } });
+  async findById(userId: string): Promise<User | null> {
+    const raw = await col('users').findOne({ _id: userId as any });
     if (!raw) return null;
-    return new User(raw.id, raw.createdAt, raw.updatedAt, {
+    return new User(id(raw), raw.createdAt, raw.updatedAt, {
       email: raw.email,
       name: raw.name,
       role: raw.role
@@ -226,51 +221,46 @@ export class UserRepository implements IUserRepository {
   }
 
   async save(user: User): Promise<void> {
-    await prisma.user.upsert({
-      where: { id: user.id },
-      create: {
-        id: user.id,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        email: user.email,
-        name: user.name,
-        role: user.role
+    await col('users').updateOne(
+      { _id: user.id as any },
+      {
+        $set: {
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          updatedAt: user.updatedAt
+        },
+        $setOnInsert: { createdAt: user.createdAt }
       },
-      update: {
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        updatedAt: user.updatedAt
-      }
-    });
+      { upsert: true }
+    );
   }
 }
 
+/* ─── Branch ──────────────────────────────────────────────────────── */
+
 export class BranchRepository implements IBranchRepository {
-  async findById(id: string): Promise<Branch | null> {
-    const raw = await prisma.branch.findUnique({ where: { id } });
+  async findById(branchId: string): Promise<Branch | null> {
+    const raw = await col('branches').findOne({ _id: branchId as any });
     if (!raw) return null;
-    return new Branch(raw.id, raw.createdAt, raw.updatedAt, {
+    return new Branch(id(raw), raw.createdAt, raw.updatedAt, {
       name: raw.name,
-      location: raw.location,
+      location: raw.location
     });
   }
 
   async save(branch: Branch): Promise<void> {
-    await prisma.branch.upsert({
-      where: { id: branch.id },
-      create: {
-        id: branch.id,
-        createdAt: branch.createdAt,
-        updatedAt: branch.updatedAt,
-        name: branch.name,
-        location: branch.location
+    await col('branches').updateOne(
+      { _id: branch.id as any },
+      {
+        $set: {
+          name: branch.name,
+          location: branch.location,
+          updatedAt: branch.updatedAt
+        },
+        $setOnInsert: { createdAt: branch.createdAt }
       },
-      update: {
-        name: branch.name,
-        location: branch.location,
-        updatedAt: branch.updatedAt
-      }
-    });
+      { upsert: true }
+    );
   }
 }
