@@ -9,7 +9,6 @@ import { RedisLockManager } from '../infrastructure/RedisLockManager';
 import { InProcessEventBus } from '../infrastructure/InProcessEventBus';
 import { DomainError } from '../domain/errors/DomainErrors';
 import { z } from 'zod';
-import { prisma } from '../infrastructure/database';
 
 const router = Router();
 

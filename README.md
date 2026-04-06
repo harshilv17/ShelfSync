@@ -6,9 +6,9 @@ It handles multiple library branches with distributed locks for real-time consis
 ## 🚀 Tech Stack
 
 | Tool | Purpose |
-|------|---------|
+|------|---------| 
 | **Node.js + Express + TypeScript** | Framework |
-| **PostgreSQL (via Neon) + Prisma ORM** | Database |
+| **MongoDB** | Database |
 | **Redis (via ioredis)** | Distributed Locking |
 | **Zod** | Validation |
 | **JWT (JSON Web Tokens)** | Auth |
@@ -23,7 +23,7 @@ The system enforces a strict layered architecture:
 |-------|------|----------------|
 | **Domain Layer** | `src/domain/` | Pure entities (`Book`, `Loan`, `User`, etc.), value objects (`Money`), custom domain errors, and interfaces for Repositories and Lock Managers. Has **zero** dependencies on the rest of the application or the framework. |
 | **Application Layer** | `src/application/` | Use-case services (`BorrowBookService`, `ReturnBookService`, `ReservationService`) orchestrating domain entities and resolving business flows. |
-| **Infrastructure Layer** | `src/infrastructure/` | Prisma implementations for the Repositories, In-Process Event Bus, and Redis Lock Manager to safely prevent dirty reads/writes across multiple servers. |
+| **Infrastructure Layer** | `src/infrastructure/` | MongoDB repository implementations, In-Process Event Bus, and Redis Lock Manager to safely prevent dirty reads/writes across multiple servers. |
 | **API / Presentation Layer** | `src/api/` | Express routes, Zod schemas, and JWT Authentication middleware parsing the incoming IO. |
 
 ## 📝 Key Features
@@ -39,32 +39,26 @@ The system enforces a strict layered architecture:
 Ensure your `.env` contains:
 
 ```env
-DATABASE_URL="postgres://username:password@your-neon-host/db_name?sslmode=require"
+MONGO_URL="mongodb://localhost:27017"
+MONGO_DB_NAME="shelfsync"
 JWT_SECRET="your_secure_jwt_secret"
 JWT_EXPIRES_IN="24h"
 REDIS_URL="redis://localhost:6379"
 ```
 
-### 2. Setup Database & Start Server
+### 2. Start Server
 
 ```bash
 # Install dependencies
 npm install
 
-# Run database migrations
-npx prisma migrate dev
-
-# Build the TypeScript project
-npx tsc
-
-# Start the application
-npm run start
-
-# Alternatively, run in dev via TS Node
-npx ts-node src/server.ts
+# Start the application in dev mode
+npm run dev
 ```
+
+> MongoDB collections are created automatically on first write — no migrations required.
 
 ## 🔒 Automated Guardrails
 
-- **Optimistic Locking**: Every `Book` and `Loan` increment a Prisma `@version` integer upon update. Concurrent writes throwing conflicts are handled gracefully.
+- **Optimistic Locking**: `BookCopy`, `Loan`, and `Reservation` documents include a `version` field that is atomically incremented on every update via `$inc`. Concurrent writes can be detected and handled gracefully.
 - **Role-Based Access Control**: Standard Express checks exist preventing non-librarian users from performing sensitive operations.
