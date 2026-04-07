@@ -57,8 +57,3 @@ npm run dev
 ```
 
 > MongoDB collections are created automatically on first write — no migrations required.
-
-## 🔒 Automated Guardrails
-
-- **Optimistic Locking**: `BookCopy`, `Loan`, and `Reservation` documents include a `version` field that is atomically incremented on every update via `$inc`. Concurrent writes can be detected and handled gracefully.
-- **Role-Based Access Control**: Standard Express checks exist preventing non-librarian users from performing sensitive operations.
