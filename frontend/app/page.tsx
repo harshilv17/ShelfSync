@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Dashboard – LibraNet',
-  description: 'Your library dashboard. View active loans, browse books, and manage reservations.',
+  description: 'Your library dashboard. View open checkouts, browse books, and manage reservations.',
 };
 
 const STAT_CARDS = [
@@ -19,8 +19,8 @@ const STAT_CARDS = [
     color: 'indigo',
   },
   {
-    label: 'My Loans',
-    description: 'Manage your active and overdue loans.',
+    label: 'Borrowed Books',
+    description: 'Manage your active and overdue borrowed books.',
     href: '/loans',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

@@ -28,8 +28,8 @@ export default function LoansPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold text-slate-100 tracking-tight">My Loans</h1>
-          <p className="text-slate-400">Track your active loans and return books.</p>
+          <h1 className="text-3xl font-bold text-slate-100 tracking-tight">Borrowed Books</h1>
+          <p className="text-slate-400">Track your active borrows and return books.</p>
         </div>
         <button
           onClick={refetch}
@@ -64,12 +64,12 @@ export default function LoansPage() {
           <section className="flex flex-col gap-3">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-              Active Loans ({activeLoans.length})
+              Active Borrows ({activeLoans.length})
             </h2>
 
             {activeLoans.length === 0 ? (
               <div className="rounded-2xl border border-slate-700/60 bg-slate-800/30 py-12 text-center text-slate-500 text-sm">
-                No active loans. Head to{' '}
+                No active borrows. Head to{' '}
                 <a href="/books" className="text-indigo-400 hover:underline">Books</a> to borrow one.
               </div>
             ) : (
