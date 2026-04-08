@@ -126,25 +126,6 @@ export default function DashboardPage() {
           );
         })}
       </section>
-
-      {/* Architecture callout */}
-      <section className="rounded-2xl border border-slate-700/60 bg-slate-800/30 p-6 flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">System Architecture</h2>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-sm">
-          {[
-            { label: 'Node.js + Express', sub: 'Backend API' },
-            { label: 'PostgreSQL + Prisma', sub: 'Data Layer' },
-            { label: 'Redis Locks', sub: 'Concurrency' },
-            { label: 'Next.js App Router', sub: 'Frontend' },
-          ].map(({ label, sub }) => (
-            <div key={label} className="flex flex-col gap-0.5 rounded-lg bg-slate-800 px-3 py-2.5 border border-slate-700/50">
-              <span className="font-medium text-slate-300">{label}</span>
-              <span className="text-xs text-slate-500">{sub}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
     </div>
   );
 }
