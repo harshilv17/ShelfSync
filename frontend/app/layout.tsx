@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'LibraNet – Distributed Multi-Branch Library',
   description:
-    'LibraNet is a distributed multi-branch library management system. Borrow books, manage loans, and reserve copies across branches.',
+    'LibraNet is a distributed multi-branch library management system. Borrow books, manage borrowed books, and reserve copies across branches.',
 };
 
 export default function RootLayout({
